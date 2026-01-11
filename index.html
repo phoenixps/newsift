@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NewSift | Sift the news that matters</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0a0a;
+            --bg-dashboard: radial-gradient(circle at 50% -20%, #1a1a2e 0%, #0a0a0a 100%);
+            --text-white: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.5);
+            --border-glass: rgba(255, 255, 255, 0.1);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+            --gradient-1: linear-gradient(135deg, #8B5CF6, #EC4899);
+            --gradient-2: linear-gradient(135deg, #3B82F6, #06B6D4);
+            --gradient-3: linear-gradient(135deg, #EC4899, #F59E0B);
+            --gradient-primary: linear-gradient(135deg, #8B5CF6, #3B82F6);
+            --text-main: #ededed;
+            --border: rgba(255, 255, 255, 0.06);
+            --tile-bg: rgba(255, 255, 255, 0.015);
+            --input-bg: #111113;
+        }
+
+        body.light-mode {
+            --bg-deep: #f4f4f5;
+            --bg-dashboard: #f4f4f5;
+            --text-main: #09090b;
+            --text-muted: #71717a;
+            --border: rgba(0, 0, 0, 0.1);
+            --tile-bg: #ffffff;
+            --input-bg: #ffffff;
+        }
+
+        /* --- MANDATORY CURSOR OVERRIDES --- */
+        * { cursor: default; }
+
+        button, button *, a, a *, [role="button"], [role="button"] *, .cursor-pointer, .template-btn, .article-card {
+            cursor: pointer !important;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-white);
+            margin: 0;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        /* Custom Scrollbar for Tiles */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3%3Ffilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        #hero {
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle at center, #111 0%, #0a0a0a 100%);
+        }
+
+        .background-shapes { position: absolute; inset: 0; z-index: 1; }
+        .shape { position: absolute; filter: blur(120px); opacity: 0.4; animation: drift 25s infinite linear alternate; will-change: transform; }
+        .shape-1 { width: 500px; height: 500px; background: var(--gradient-1); top: -10%; left: -5%; border-radius: 40% 60% 70% 30% / 40% 50% 60% 70%; }
+        .shape-2 { width: 450px; height: 450px; background: var(--gradient-2); top: 10%; right: -5%; border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; animation-duration: 30s; animation-delay: -5s; }
+        .shape-3 { width: 600px; height: 350px; background: var(--gradient-3); bottom: -10%; left: 20%; border-radius: 50%; animation-duration: 35s; animation-delay: -10s; }
+
+        @keyframes drift {
+            0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+            100% { transform: translate(100px, 50px) rotate(20deg) scale(1.1); }
+        }
+
+        .hero-content { position: relative; z-index: 10; text-align: center; max-width: 800px; }
+        .logo-text { font-size: clamp(60px, 10vw, 110px); font-weight: 900; letter-spacing: 0.15em; margin: 0; text-shadow: 0 4px 30px rgba(255, 255, 255, 0.2); opacity: 0; transform: scale(0.98); animation: logoScale 1.2s var(--ease-premium) forwards 0.2s; line-height: 1; margin-right: -0.15em; }
+        @keyframes logoScale { to { transform: scale(1); opacity: 1; } }
+
+        .tagline { 
+            font-size: 10px; 
+            color: var(--text-muted); 
+            letter-spacing: 0.54em; 
+            text-transform: uppercase; 
+            font-weight: 600; 
+            margin-top: 12px; 
+            opacity: 0; 
+            animation: slideFade 0.8s var(--ease-premium) forwards 0.8s;
+            margin-right: -0.54em;
+            display: inline-block;
+            width: 100%;
+        }
+        .divider { width: 40px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); margin: 40px auto; opacity: 0; animation: fadeIn 1.5s ease forwards 1s; }
+        .description { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-style: italic; color: rgba(255, 255, 255, 0.65); line-height: 1.6; max-width: 480px; margin: 0 auto; font-weight: 300; opacity: 0; animation: slideFade 1s var(--ease-premium) forwards 1.2s; }
+        
+        @keyframes slideFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.4em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            animation: bounce 2s infinite;
+            z-index: 10;
+        }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); } 40% { transform: translateX(-50%) translateY(-10px); } 60% { transform: translateX(-50%) translateY(-5px); } }
+
+        #dashboard {
+            padding: 80px 4% 100px;
+            background: var(--bg-dashboard);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass:hover { 
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-4px) scale(1.005);
+            box-shadow: 0 20px 40px -15px rgba(0,0,0,0.6);
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            flex-grow: 1;
+            padding-bottom: 2rem;
+        }
+
+        .span-full { grid-column: 1 / -1 !important; }
+
+        @media (max-width: 850px) {
+            .news-grid { grid-template-columns: 1fr; }
+            .span-full { grid-column: auto !important; }
+        }
+
+        .news-tile {
+            height: 440px; 
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-radius: 2.5rem;
+            position: relative;
+        }
+
+        .status-pill {
+            font-size: 0.65rem;
+            padding: 2px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .article-card {
+            border-radius: 1rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            transition: background 0.2s ease;
+        }
+        .article-card:hover { background: rgba(255, 255, 255, 0.03); }
+
+        .loading-shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+        .btn-gradient {
+            background: var(--gradient-primary);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .btn-gradient:hover {
+            filter: brightness(1.1);
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.3);
+        }
+
+        .ai-summary-overlay {
+            background: rgba(10, 10, 15, 0.95);
+            backdrop-filter: blur(30px);
+            position: absolute;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            animation: fadeInModal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .pulse-dot { 
+            width: 6px; height: 6px; 
+            background: #8b5cf6; 
+            border-radius: 50%; 
+            display: inline-block; 
+            box-shadow: 0 0 8px #8b5cf6; 
+            animation: pulse-kf 2s infinite; 
+        }
+        @keyframes pulse-kf { 
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); } 
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(139, 92, 246, 0); } 
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } 
+        }
+
+        .template-btn { 
+            background: rgba(255, 255, 255, 0.02); 
+            border: 1px solid rgba(255, 255, 255, 0.04); 
+            padding: 10px 20px; 
+            border-radius: 12px; 
+            font-size: 11px; 
+            color: var(--text-muted); 
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+        .template-btn:hover { background: rgba(255, 255, 255, 0.05); color: white; }
+
+        .ai-glow-btn {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            transition: all 0.3s ease;
+        }
+        .ai-glow-btn:hover {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(59, 130, 246, 0.4));
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="noise-overlay"></div>
+
+    <section id="hero" role="banner">
+        <div class="background-shapes" aria-hidden="true">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+
+        <div class="hero-content">
+            <h1 class="logo-text">NewSift</h1>
+            <p class="tagline">Sift the news that matters to you</p>
+            <div class="divider"></div>
+            <p class="description">The world’s news, expertly sifted and organized for your daily focus</p>
+        </div>
+
+        <div class="scroll-indicator" onclick="scrollToDashboard()" role="button" aria-label="Scroll to dashboard">
+            <span>Scroll</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+            </svg>
+        </div>
+    </section>
+
+    <main id="dashboard">
+        <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-12 gap-6 flex-shrink-0 z-20 max-w-[1400px] w-full mx-auto">
+            <div>
+                <div class="flex items-center gap-4 flex-nowrap mb-2">
+                    <h2 class="text-3xl font-black tracking-tighter" style="color: var(--text-main)">NewSift</h2>
+                    <span class="h-6 w-[1px] bg-white/10"></span>
+                    <p class="text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-bold">Sift The News That Matters</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p id="current-date" class="text-[10px] text-zinc-400 font-mono uppercase tracking-widest"></p>
+                    <span class="pulse-dot"></span>
+                    <p id="pulse-status" class="text-[10px] text-zinc-500 font-mono uppercase tracking-tighter">Initializing...</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-nowrap items-center gap-3 w-full lg:w-auto justify-end relative">
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleTheme()" class="w-10 h-10 flex items-center justify-center rounded-full glass" id="theme-btn">
+                        <svg id="moon-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        <svg id="sun-icon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
+                    </button>
+                    <div class="flex items-center glass rounded-full p-1">
+                        <button onclick="refreshAllTiles()" id="refresh-all-btn" class="p-2 text-zinc-400 hover:text-white transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357-2H15"></path></svg>
+                        </button>
+                        <button onclick="toggleGlobalCull()" id="cull-all-btn" class="text-zinc-300 px-4 py-2 text-[10px] font-bold hover:text-white uppercase tracking-widest">✨ Sift All</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center glass rounded-full p-1.5">
+                    <button onclick="addNewTile()" id="tile-count" class="text-[10px] text-zinc-500 font-mono px-3 py-1 italic tracking-tight hover:text-white transition-colors">Add up to 6 focus tiles</button>
+                    <button onclick="addNewTile()" id="add-btn" class="btn-gradient px-5 py-2 rounded-full text-[10px] font-black tracking-widest uppercase"> + New Focus</button>
+                </div>
+            </div>
+        </header>
+
+        <div id="news-container" class="news-grid z-10"></div>
+
+        <div id="empty-state" class="hidden flex flex-col items-center justify-center flex-grow py-40 z-10">
+            <button onclick="addNewTile()" class="text-white/10 mb-6 hover:text-purple-500/30 transition-all transform hover:scale-110 active:scale-95" aria-label="Add first focus">
+                 <svg class="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="0.5" d="M12 4v16m8-8H4"></path></svg>
+            </button>
+            <p class="text-zinc-500 text-[11px] uppercase tracking-[0.4em] font-bold">Add new focus</p>
+        </div>
+    </main>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-xl" onclick="closeEdit()" role="button"></div>
+        <div class="glass w-full max-w-xl rounded-[3rem] p-10 relative z-10 border-white/10" style="background: var(--input-bg)">
+            <h3 id="modal-title" class="text-2xl font-bold mb-8 tracking-tight" style="color: var(--text-main)">Define Focus Tile</h3>
+            
+            <div class="mb-12">
+                <label class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold block mb-4">Quick Tiles</label>
+                <div class="flex flex-wrap gap-3">
+                    <button onclick="applyTemplate('Geopolitics', 'Top recent news on global conflicts, international diplomacy, and sovereign tensions.')" class="template-btn">GEOPOLITICS</button>
+                    <button onclick="applyTemplate('Markets', 'Top recent financial market updates, macro trends, and economic shifts.')" class="template-btn">Markets</button>
+                    <button onclick="applyTemplate('Technology', 'Top recent news on AI, hardware evolution, and Silicon Valley innovations.')" class="template-btn">Technology</button>
+                    <button onclick="applyTemplate('Sports', 'Top recent news on Major league results and trades.')" class="template-btn">Sports</button>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                <div class="group relative">
+                    <label class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold block mb-3">Tile Title</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="edit-name" placeholder="e.g. Politics" class="flex-1 bg-white/5 border border-white/10 p-5 rounded-2xl text-sm focus:border-purple-500/50 transition-all outline-none" style="color: var(--text-main); cursor: text !important;" onblur="autoSuggestFocus()">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold block mb-3">Tell us what type of news should this tile should focus on</label>
+                    <div class="relative">
+                        <textarea id="edit-focus" rows="3" placeholder="Describe what exactly to search for..." class="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-sm resize-none focus:border-purple-500/50 transition-all outline-none" style="color: var(--text-main); cursor: text !important;"></textarea>
+                        <div id="suggest-loader" class="absolute inset-0 bg-black/40 rounded-2xl hidden flex items-center justify-center">
+                            <div class="loading-shimmer h-2 w-1/2 rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 pt-4">
+                    <button onclick="closeEdit()" class="px-8 py-3 rounded-full text-[11px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition">Cancel</button>
+                    <button onclick="saveTile()" class="btn-gradient px-10 py-3 rounded-full text-[11px] font-black uppercase tracking-[0.2em]">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        // Global Setup
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'newsift-default';
+        const apiKey = ""; // Environment handled
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Initial Local State
+        let tiles = JSON.parse(localStorage.getItem('cull_tiles')) || [];
+        const currentNewsData = {}; 
+        let user = null;
+        let isGlobalCulled = false;
+        let lastRefreshedAt = Date.now();
+        let firestoreUnsubscribe = null;
+
+        // --- AUTH & DATA PERSISTENCE LOGIC ---
+
+        const syncTilesToCloud = async (newTiles) => {
+            if (!user) return;
+            try {
+                // Rule 1: Private Path
+                const userDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'settings', 'dashboard');
+                await setDoc(userDoc, { tiles: newTiles, updatedAt: Date.now() }, { merge: true });
+            } catch (e) {
+                console.error("Cloud sync failed", e);
+            }
+        };
+
+        const setupDataListener = (userId) => {
+            if (firestoreUnsubscribe) firestoreUnsubscribe();
+            
+            const userDoc = doc(db, 'artifacts', appId, 'users', userId, 'settings', 'dashboard');
+            firestoreUnsubscribe = onSnapshot(userDoc, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.tiles) {
+                        // Compare with local to avoid infinite refresh loops
+                        const cloudStr = JSON.stringify(data.tiles);
+                        const localStr = JSON.stringify(tiles);
+                        if (cloudStr !== localStr) {
+                            tiles = data.tiles;
+                            localStorage.setItem('cull_tiles', cloudStr);
+                            renderDashboard(true);
+                        }
+                    }
+                }
+            }, (err) => console.error("Listener error", err));
+        };
+
+        // Rule 3: Auth Before Queries
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (e) {
+                console.error("Auth initialization failed", e);
+            }
+        };
+
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (user) {
+                document.getElementById('pulse-status').innerText = 'Cloud Synced';
+                setupDataListener(user.uid);
+                renderDashboard(true);
+            }
+        });
+
+        initAuth();
+
+        // --- DASHBOARD LOGIC ---
+
+        window.scrollToDashboard = function() { document.getElementById('dashboard').scrollIntoView({ behavior: 'smooth' }); }
+
+        window.toggleTheme = function() {
+            const body = document.body;
+            const moon = document.getElementById('moon-icon');
+            const sun = document.getElementById('sun-icon');
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                moon.classList.remove('hidden');
+                sun.classList.add('hidden');
+                localStorage.setItem('cull_theme', 'dark');
+            } else {
+                body.classList.add('light-mode');
+                moon.classList.add('hidden');
+                sun.classList.remove('hidden');
+                localStorage.setItem('cull_theme', 'light');
+            }
+        }
+
+        window.updateRefreshTime = function() {
+            const status = document.getElementById('pulse-status');
+            const diffInSeconds = Math.floor((Date.now() - lastRefreshedAt) / 1000);
+            if (diffInSeconds < 60) status.innerText = `Last Refreshed: just now`;
+            else if (diffInSeconds < 3600) status.innerText = `Last Refreshed: ${Math.floor(diffInSeconds / 60)} min ago`;
+            else status.innerText = `Last Refreshed: ${Math.floor(diffInSeconds / 3600)} hour(s) ago`;
+        }
+
+        async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
+            try {
+                const response = await fetch(url, options);
+                if (!response.ok) {
+                    if (retries > 0 && (response.status === 429 || response.status >= 500)) {
+                        await new Promise(r => setTimeout(r, delay));
+                        return fetchWithRetry(url, options, retries - 1, delay * 2);
+                    }
+                    throw new Error(`API Error: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, delay));
+                    return fetchWithRetry(url, options, retries - 1, delay * 2);
+                }
+                throw error;
+            }
+        }
+
+        function extractJson(text) {
+            if (!text) return [];
+            try {
+                const cleaned = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                const start = cleaned.indexOf('[');
+                const end = cleaned.lastIndexOf(']');
+                if (start !== -1 && end !== -1) return JSON.parse(cleaned.substring(start, end + 1));
+                return JSON.parse(cleaned);
+            } catch (e) { return null; }
+        }
+
+        window.fetchNews = async function(focus) {
+            if (!user) return [];
+            const cacheKey = focus.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 50);
+            const cacheRef = doc(db, 'artifacts', appId, 'public', 'data', 'news_cache', cacheKey);
+            
+            try {
+                const cacheSnap = await getDoc(cacheRef);
+                if (cacheSnap.exists() && (Date.now() - cacheSnap.data().lastUpdated) / 60000 < 60) return cacheSnap.data().articles;
+            } catch (e) {}
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            try {
+                const result = await fetchWithRetry(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Today's date is ${new Date().toLocaleDateString()}. Search for the 10 most recent news reports specifically about: "${focus}".` }] }],
+                        systemInstruction: { parts: [{ text: `Return a valid JSON array of objects. Format: [{"title": "...", "source": "...", "url": "...", "time": "..."}].` }] },
+                        tools: [{ "google_search": {} }]
+                    })
+                });
+                const content = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                const parsed = extractJson(content);
+                const finalNews = (parsed && parsed.length) ? parsed.slice(0, 10) : [];
+                if (user && finalNews.length > 0) await setDoc(cacheRef, { articles: finalNews, lastUpdated: Date.now(), focusQuery: focus });
+                return finalNews;
+            } catch (e) { return []; }
+        }
+
+        window.autoSuggestFocus = async function() {
+            const title = document.getElementById('edit-name').value.trim();
+            const focusField = document.getElementById('edit-focus');
+            const loader = document.getElementById('suggest-loader');
+            if (!title || focusField.value.trim().length > 0) return;
+            loader.classList.remove('hidden');
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            try {
+                const result = await fetchWithRetry(url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Write a one-sentence news search focus for: "${title}".` }] }],
+                        systemInstruction: { parts: [{ text: "Concise, professional. No quotes." }] }
+                    })
+                });
+                const suggestion = result.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                if (suggestion) focusField.value = suggestion;
+            } catch (e) {} finally { loader.classList.add('hidden'); }
+        }
+
+        window.refreshTile = async function(tileId) {
+            const btn = document.getElementById(`refresh-btn-${tileId}`);
+            if (btn) btn.classList.add('animate-spin');
+            const tile = tiles.find(t => t.id === tileId);
+            if (tile) await loadTileContent(tile);
+            lastRefreshedAt = Date.now();
+            updateRefreshTime();
+            if (btn) btn.classList.remove('animate-spin');
+        }
+
+        window.refreshAllTiles = async function() {
+            const btn = document.getElementById('refresh-all-btn');
+            btn.querySelector('svg').classList.add('animate-spin');
+            await Promise.all(tiles.map(tile => loadTileContent(tile)));
+            lastRefreshedAt = Date.now();
+            updateRefreshTime();
+            btn.querySelector('svg').classList.remove('animate-spin');
+        }
+
+        window.toggleGlobalCull = async function() {
+            const btn = document.getElementById('cull-all-btn');
+            if (isGlobalCulled) {
+                tiles.forEach(tile => closeSummary(tile.id));
+                btn.innerHTML = '✨ SIFT ALL';
+                isGlobalCulled = false;
+            } else {
+                btn.innerHTML = '✨ Synthesizing...';
+                for (const tile of tiles) { await summarizeNews(tile.id); }
+                btn.innerHTML = '↩️ Restore';
+                isGlobalCulled = true;
+            }
+        }
+
+        window.summarizeNews = async function(tileId) {
+            if (!user) return;
+            const tile = tiles.find(t => t.id === tileId);
+            const articles = currentNewsData[tileId];
+            if (!articles || articles.length === 0) return;
+            const summaryContainer = document.getElementById(`summary-${tileId}`);
+            summaryContainer.classList.remove('hidden');
+            summaryContainer.innerHTML = `<div class="p-10 flex flex-col items-center justify-center text-center h-full"><h2 class="text-xl font-bold mb-4 uppercase tracking-widest">${tile.name} Synthesis</h2><p id="stext-${tileId}" class="text-zinc-400 leading-relaxed max-w-sm">Generating brief...</p><button onclick="closeSummary(${tileId})" class="mt-8 glass px-8 py-2 rounded-full text-[10px] font-bold uppercase">Back</button></div>`;
+            const cacheKey = `summary-${tile.focus.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 40)}`;
+            const cacheRef = doc(db, 'artifacts', appId, 'public', 'data', 'summary_cache', cacheKey);
+            try {
+                const cacheSnap = await getDoc(cacheRef);
+                if (cacheSnap.exists() && (Date.now() - cacheSnap.data().lastUpdated) / 60000 < 120) {
+                    document.getElementById(`stext-${tileId}`).innerText = cacheSnap.data().summary;
+                    return;
+                }
+            } catch (e) {}
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            try {
+                const result = await fetchWithRetry(url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `Summarize impact for ${tile.name}: \n${articles.map(a => a.title).join('\n')}` }] }],
+                        systemInstruction: { parts: [{ text: "Professional, max 50 words." }] }
+                    })
+                });
+                const summary = result.candidates?.[0]?.content?.parts?.[0]?.text || "No synthesis available.";
+                document.getElementById(`stext-${tileId}`).innerText = summary;
+                if (user) await setDoc(cacheRef, { summary, lastUpdated: Date.now() });
+            } catch (e) { document.getElementById(`stext-${tileId}`).innerText = "Failed."; }
+        }
+
+        window.closeSummary = function(tileId) { document.getElementById(`summary-${tileId}`).classList.add('hidden'); }
+
+        window.deleteTile = function(tileId) {
+            tiles = tiles.filter(t => t.id !== tileId);
+            delete currentNewsData[tileId];
+            localStorage.setItem('cull_tiles', JSON.stringify(tiles));
+            syncTilesToCloud(tiles);
+            renderDashboard(false);
+        }
+
+        window.createTileHtml = function(tile) {
+            const data = currentNewsData[tile.id] || [];
+            return `
+                <div class="flex justify-between items-start mb-4 flex-shrink-0">
+                    <div class="flex-1 truncate">
+                        <h3 class="text-[11px] font-black uppercase tracking-[0.2em] mb-1" style="color: var(--text-main)">${tile.name}</h3>
+                        <p class="text-[9px] text-zinc-500 truncate font-medium uppercase tracking-tight">${tile.focus}</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="summarizeNews(${tile.id})" class="text-[8px] font-bold px-2 py-1 rounded-full glass">SIFT</button>
+                        <button onclick="refreshTile(${tile.id})" id="refresh-btn-${tile.id}" class="p-1.5 text-zinc-500 hover:text-white transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357-2H15"></path></svg>
+                        </button>
+                        <button onclick="editTile(${tile.id})" class="p-1.5 text-zinc-500 hover:text-white transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </button>
+                        <button onclick="deleteTile(${tile.id})" class="p-1.5 text-zinc-500 hover:text-red-500 transition cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-grow overflow-y-auto custom-scrollbar pr-2 -mr-2">
+                    <div class="space-y-3 pb-2">
+                        ${data.length ? data.map(item => `
+                            <a href="${item.url}" target="_blank" class="article-card block group">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="status-pill group-hover:bg-white/10 group-hover:text-white transition-colors">${item.source}</span>
+                                    <span class="text-[9px] text-zinc-500 mono">${item.time}</span>
+                                </div>
+                                <h4 class="text-[13px] font-medium leading-[1.4] text-zinc-400 group-hover:text-white transition-colors">${item.title}</h4>
+                            </a>
+                        `).join('') : `
+                            <div class="h-14 w-full loading-shimmer rounded-xl opacity-30"></div>
+                            <div class="h-14 w-full loading-shimmer rounded-xl opacity-20"></div>
+                            <div class="h-14 w-full loading-shimmer rounded-xl opacity-10"></div>
+                        `}
+                    </div>
+                </div>
+                <div id="summary-${tile.id}" class="ai-summary-overlay hidden"></div>
+            `;
+        }
+
+        window.loadTileContent = async function(tile) {
+            const news = await fetchNews(tile.focus);
+            currentNewsData[tile.id] = news;
+            const node = document.getElementById(`tile-node-${tile.id}`);
+            if (node) node.innerHTML = createTileHtml(tile);
+        }
+
+        window.renderDashboard = function(fullRefresh = false) {
+            const container = document.getElementById('news-container');
+            if (tiles.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                container.innerHTML = '';
+                return;
+            }
+            document.getElementById('empty-state').classList.add('hidden');
+            container.innerHTML = '';
+            tiles.forEach((tile, idx) => {
+                const el = document.createElement('div');
+                el.id = `tile-node-${tile.id}`;
+                el.setAttribute('data-id', tile.id);
+                el.classList.add('news-tile', 'glass', 'p-6');
+                if (idx === tiles.length - 1 && idx % 2 === 0) el.classList.add('span-full');
+                el.innerHTML = createTileHtml(tile);
+                container.appendChild(el);
+                if (fullRefresh || !currentNewsData[tile.id]) loadTileContent(tile);
+            });
+            Sortable.create(container, { animation: 250, handle: 'h3', onEnd: () => {
+                tiles = Array.from(container.children).map(c => tiles.find(t => t.id === parseInt(c.dataset.id)));
+                localStorage.setItem('cull_tiles', JSON.stringify(tiles));
+                syncTilesToCloud(tiles);
+            }});
+        }
+
+        window.addNewTile = function() {
+            if (tiles.length >= 6) return;
+            activeEditId = Date.now();
+            document.getElementById('modal-title').innerText = 'Define New Tile';
+            document.getElementById('edit-name').value = '';
+            document.getElementById('edit-focus').value = '';
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        window.editTile = function(id) {
+            const tile = tiles.find(t => t.id === id);
+            activeEditId = id;
+            document.getElementById('modal-title').innerText = 'Adjust Parameters';
+            document.getElementById('edit-name').value = tile.name;
+            document.getElementById('edit-focus').value = tile.focus;
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        let activeEditId = null;
+        window.saveTile = function() {
+            const name = document.getElementById('edit-name').value.trim();
+            const focus = document.getElementById('edit-focus').value.trim();
+            if (!name || !focus) return;
+            const idx = tiles.findIndex(t => t.id === activeEditId);
+            if (idx !== -1) {
+                tiles[idx] = { ...tiles[idx], name, focus };
+                currentNewsData[activeEditId] = null;
+            } else {
+                tiles.push({ id: activeEditId, name, focus });
+            }
+            localStorage.setItem('cull_tiles', JSON.stringify(tiles));
+            syncTilesToCloud(tiles);
+            renderDashboard(false);
+            closeEdit();
+        }
+
+        window.closeEdit = function() { document.getElementById('edit-modal').classList.add('hidden'); }
+        window.applyTemplate = function(name, desc) {
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-focus').value = desc;
+        }
+
+        if (localStorage.getItem('cull_theme') === 'light') toggleTheme();
+        document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+        setInterval(updateRefreshTime, 10000);
+        updateRefreshTime();
+    </script>
+</body>
+</html>
